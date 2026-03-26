@@ -12,7 +12,11 @@ st.title("📊 库存库龄分析BI报表")
 # 加载数据
 @st.cache_data
 def load_data():
-    df = pd.read_excel('库存库龄明细表.xlsx')
+    # 读取第一个工作表（库龄明细）
+    df = pd.read_excel('库存库龄明细表.xlsx', sheet_name=0)
+    
+    # 读取第二个工作表（分月明细）
+    df_monthly = pd.read_excel('库存库龄明细表.xlsx', sheet_name=1)
     
     # 定位列
     age_col = df.columns[18]  # S列库龄天数
@@ -44,10 +48,10 @@ def load_data():
     
     df['库龄分段'] = df[age_col].apply(categorize_age)
     
-    return df, age_col, amount_col, item_code_col, item_name_col
+    return df, age_col, amount_col, item_code_col, item_name_col, df_monthly
 
 # 加载
-df, age_col, amount_col, item_code_col, item_name_col = load_data()
+df, age_col, amount_col, item_code_col, item_name_col, df_monthly = load_data()
 
 # 侧边栏筛选
 st.sidebar.header("🔍 筛选条件")
@@ -62,13 +66,76 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("总品项数", f"{len(filtered_df):,}")
 total_amount = filtered_df[amount_col].sum()
 col2.metric("库存总金额", f"¥{total_amount:,.2f}万")
-slow_items = len(filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])])
+slow_items = len(filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')])
 col3.metric("呆滞品项数", f"{slow_items:,}")
-slow_amount = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])][amount_col].sum()
+slow_amount = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')]][amount_col].sum()
 col4.metric("呆滞金额", f"¥{slow_amount:,.2f}万")
 
-# 图表
-st.subheader("📊 可视化")
+# 分月趋势图（折线+柱状复合图）
+st.subheader("📊 产成品金额变动趋势")
+fig_trend = go.Figure()
+
+# 柱状图 - 合计
+fig_trend.add_trace(go.Bar(
+    x=df_monthly.iloc[:, 0],  # A列月份
+    y=df_monthly.iloc[:, 4],  # E列合计
+    name='合计',
+    marker_color='#FFE4C4',  # 浅橙色
+    opacity=0.7
+))
+
+# 折线图 - 试切、展会、办事处、转固
+fig_trend.add_trace(go.Scatter(
+    x=df_monthly.iloc[:, 0],
+    y=df_monthly.iloc[:, 1],  # B列
+    name='试切、展会、办事处、转固',
+    mode='lines+markers+text',
+    line=dict(color='#FF8C00', width=2),
+    marker=dict(size=6),
+    text=df_monthly.iloc[:, 1].round(0),
+    textposition='top center',
+    textfont=dict(size=9)
+))
+
+# 折线图 - 外部客户
+fig_trend.add_trace(go.Scatter(
+    x=df_monthly.iloc[:, 0],
+    y=df_monthly.iloc[:, 2],  # C列
+    name='外部客户',
+    mode='lines+markers+text',
+    line=dict(color='#FFD700', width=2),
+    marker=dict(size=6),
+    text=df_monthly.iloc[:, 2].round(0),
+    textposition='top center',
+    textfont=dict(size=9)
+))
+
+# 折线图 - 无客户
+fig_trend.add_trace(go.Scatter(
+    x=df_monthly.iloc[:, 0],
+    y=df_monthly.iloc[:, 3],  # D列
+    name='无客户',
+    mode='lines+markers+text',
+    line=dict(color='#32CD32', width=2),
+    marker=dict(size=6),
+    text=df_monthly.iloc[:, 3].round(0),
+    textposition='top center',
+    textfont=dict(size=9)
+))
+
+fig_trend.update_layout(
+    title='产成品（含无客户）金额变动趋势图',
+    xaxis_title='月份',
+    yaxis_title='金额',
+    height=500,
+    legend=dict(orientation='h', yanchor='bottom', y=-0.2, xanchor='center', x=0.5),
+    barmode='group'
+)
+
+st.plotly_chart(fig_trend, use_container_width=True)
+
+# 库龄分析图表
+st.subheader("📊 库龄分析")
 col_left, col_right = st.columns(2)
 
 with col_left:
@@ -82,7 +149,7 @@ with col_right:
 
 # 呆滞TOP10
 st.subheader("⚠️ 呆滞库存TOP10")
-slow_moving = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])]
+slow_moving = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')]]
 if len(slow_moving) > 0:
     top_slow = slow_moving.groupby([item_code_col, item_name_col])[amount_col].sum().sort_values(ascending=False).head(10).reset_index()
     top_slow.columns = ['物料号', '物料名称', '呆滞金额(万元)']
