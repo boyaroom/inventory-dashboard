@@ -12,7 +12,7 @@ st.title("📊 库存库龄分析BI报表")
 # 加载数据
 @st.cache_data
 def load_data():
-    df = pd.read_excel(r'C:\Users\73746\Desktop\库存库龄明细表.xlsx')
+    df = pd.read_excel('库存库龄明细表.xlsx')
     
     # 定位列
     age_col = df.columns[18]  # S列库龄天数
