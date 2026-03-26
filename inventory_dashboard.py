@@ -66,9 +66,13 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("总品项数", f"{len(filtered_df):,}")
 total_amount = filtered_df[amount_col].sum()
 col2.metric("库存总金额", f"¥{total_amount:,.2f}万")
-slow_items = len(filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')])])
+
+# 第65行 - 修正括号
+slow_items = len(filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])])
 col3.metric("呆滞品项数", f"{slow_items:,}")
-slow_amount = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')]][amount_col].sum()
+
+# 第69行 - 修正括号
+slow_amount = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])][amount_col].sum()
 col4.metric("呆滞金额", f"¥{slow_amount:,.2f}万")
 
 # 分月趋势图（折线+柱状复合图）
@@ -149,7 +153,7 @@ with col_right:
 
 # 呆滞TOP10
 st.subheader("⚠️ 呆滞库存TOP10")
-slow_moving = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)')]]
+slow_moving = filtered_df[filtered_df['库龄分段'].isin(['181-360天(呆滞)', '360天以上(严重呆滞)'])]
 if len(slow_moving) > 0:
     top_slow = slow_moving.groupby([item_code_col, item_name_col])[amount_col].sum().sort_values(ascending=False).head(10).reset_index()
     top_slow.columns = ['物料号', '物料名称', '呆滞金额(万元)']
